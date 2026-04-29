@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>暦変換ツール (Julius ↔ Gregorian)</title>
+    <!-- UI用のTailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 日付操作ライブラリ Day.js (標準機能用) -->
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen py-10 px-5">
+
+    <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-md">
+        <h1 class="text-2xl font-bold text-slate-800 mb-6 text-center">暦 相互変換ツール</h1>
+        
+        <p class="text-sm text-slate-500 mb-8 leading-relaxed">
+            ユリウス暦とグレゴリオ暦を双方向に変換します。
+            <br><span class="font-semibold text-blue-600">D = floor(Y/100) - floor(Y/400) - 2</span> のロジックに基づいた計算式モデルです。
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- ユリウス暦入力 -->
+            <div class="space-y-3">
+                <label class="block text-sm font-bold text-slate-700">ユリウス暦 (Julian)</label>
+                <input type="date" id="julianInput" class="w-full border border-slate-300 p-2 rounded-md focus:ring-2 focus:ring-blue-400 outline-none">
+                <p class="text-xs text-slate-400">※過去の日付を入力してください</p>
+            </div>
+
+            <!-- グレゴリオ暦入力 -->
+            <div class="space-y-3">
+                <label class="block text-sm font-bold text-slate-700">グレゴリオ暦 (Gregorian)</label>
+                <input type="date" id="gregorianInput" class="w-full border border-slate-300 p-2 rounded-md focus:ring-2 focus:ring-green-400 outline-none">
+                <p class="text-xs text-slate-400">※現代で使われている暦です</p>
+            </div>
+        </div>
+
+        <div class="mt-10 p-4 bg-slate-100 rounded-lg">
+            <h2 class="text-sm font-bold text-slate-600 mb-2">現在の換算結果</h2>
+            <div id="resultArea" class="text-slate-800 space-y-1">
+                <p>日付を選択してください。</p>
+            </div>
+        </div>
+
+        <footer class="mt-8 text-center text-xs text-slate-400">
+            西暦200年〜300年のズレ0日を基準とした計算モデル
+        </footer>
+    </div>
+
+    <script>
+        const julianEl = document.getElementById('julianInput');
+        const gregorianEl = document.getElementById('gregorianInput');
+        const resultArea = document.getElementById('resultArea');
+
+        // 差分Dを計算する関数
+        function calculateDiff(year, month) {
+            let y = year;
+            if (month <= 2) y -= 1;
+            return Math.floor(y / 100) - Math.floor(y / 400) - 2;
+        }
+
+        // ユリウス暦 -> グレゴリオ暦
+        julianEl.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (!val) return;
+
+            const [y, m, d] = val.split('-').map(Number);
+            const diff = calculateDiff(y, m);
+            
+            // ユリウス暦の日付にDを足してグレゴリオ暦を出す
+            const gDate = dayjs(val).add(diff, 'day');
+            
+            gregorianEl.value = gDate.format('YYYY-MM-DD');
+            updateInfo(diff, "ユリウス → グレゴリオ");
+        });
+
+        // グレゴリオ暦 -> ユリウス暦
+        gregorianEl.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (!val) return;
+
+            const [y, m, d] = val.split('-').map(Number);
+            
+            /* 
+               逆算：Gの日付から、その時点のDを引く
+               厳密にはDの境界付近で微調整が必要だが、
+               一般的な歴史計算モデル(3月基準)では G - D = J となる
+            */
+            const diff = calculateDiff(y, m);
+            const jDate = dayjs(val).subtract(diff, 'day');
+
+            julianEl.value = jDate.format('YYYY-MM-DD');
+            updateInfo(diff, "グレゴリオ → ユリウス");
+        });
+
+        function updateInfo(diff, mode) {
+            resultArea.innerHTML = `
+                <p class="font-mono text-lg text-blue-700 font-bold">${mode}</p>
+                <p>この期間の累積差: <span class="font-bold">${diff} 日</span></p>
+                <p class="text-sm mt-2 text-slate-500">※グレゴリオ暦が ${diff} 日先行しています。</p>
+            `;
+        }
+    </script>
+</body>
+</html>
